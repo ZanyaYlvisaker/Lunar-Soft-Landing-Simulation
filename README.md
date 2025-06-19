@@ -123,11 +123,17 @@ t_go=sqrt((wf-w)^2+(vf-v)^2)/aH
 为了避免积分计算时出现奇点，需对输入的beta角进行处理使其不严格为0：
 
 if abs(beta) < 1e-5
+
     if beta == 0
+    
         beta = 1e-5;
+        
     else
+    
         beta = sign(beta) * 1e-5;
+        
     end
+    
 end
 
 每个积分步长调用制导律函数更新控制角psi和phi（制导律模块详见下一节）：
@@ -137,11 +143,17 @@ end
 根据式(2-3)编写微分方程：
 
 dr = u;
+
 dbeta = v / r;
+
 dalpha = w / (r * sin(beta));
+
 du = (F * cos(psi) / m) - params.mu_moon/r^2 + (v^2 + w^2)/r;
+
 dv = (F * sin(psi) * cos(phi) / m) - (u*v)/r + (w^2)/(r*tan(beta));
+
 dw = (F * sin(psi) * sin(phi) / m) - (u*w)/r - (v*w)/(r*tan(beta));
+
 dm = -F / C;
 
 3.2.1 制导律计算模块
@@ -151,12 +163,15 @@ dm = -F / C;
 首先根据状态量计算当前水平速度：
 
 delta_v = params.vf - v;
+
 delta_w = params.wf - w;
+
 V_horizontal = sqrt(delta_v^2 + delta_w^2); 
 
 假设初始假设a_H = F/m，计算a_H：
 
 a_F = F / m;
+
 a_H_initial = a_F;
 
 根据式(2-6)估计剩余时间：
@@ -166,34 +181,59 @@ t_go_guess = V_horizontal / a_H_initial;
 根据式(2-4)和式(2-5)迭代计算径向加速度和psi角，并确定剩余时间：
 
 max_iter = 10; % 最大迭代次数
+
 tolerance = 1e-5; % 收敛容差
+
 for iter = 1:max_iter
+
     % 计算径向加速度a
+    
     numerator_a = 6*(params.rf - r - u*t_go_guess) - 2*(params.uf - u)*t_go_guess;
+    
     a_radial = numerator_a / (t_go_guess^2);
+    
     % 计算psi角
+    
     term_gravity = params.mu_moon / r^2;
+    
     term_centrifugal = (v^2 + w^2) / r;
+    
     numerator_psi = a_radial + term_gravity - term_centrifugal;
+    
     cos_psi = numerator_psi / a_F;
+    
     cos_psi = max(min(cos_psi, 1), 0); % 限制在有效范围
+    
     psi = acos(cos_psi);
+    
     % 更新水平加速度和剩余时间
+    
     a_H = a_F * sin(psi);
+    
     t_go_new = V_horizontal / a_H;
+    
     % 检查收敛
+    
     if abs(t_go_new - t_go_guess) < tolerance
+    
         % disp([iter, "收敛"])
+        
     break;
+    
     end
+    
     t_go_guess = t_go_new;
+    
 end
+
 t_go = t_go_guess;
 
 根据式(2-5)计算phi角：
 
 Vc_x = params.vf - v; % 纬度方向速度增量
+
 Vc_y = params.wf - w; % 经度方向速度增量
+
 phi = acos(Vc_x/sqrt(Vc_x^2+Vc_y^2));
 
 3.2.3 偏差注入模块
@@ -201,16 +241,19 @@ phi = acos(Vc_x/sqrt(Vc_x^2+Vc_y^2));
 为了研究相关参数对软着陆性能的影响，在动力学模型和制导律函数中，实际使用的推力F和比冲Isp可能是标称值，也可能是带有偏差的值。因此可以在全局定义偏差因子，例如：
 
 thrust_factor = 1.1; % 推力增加10%
+
 Isp_factor = 0.9; % 比冲减少10%
 
 然后在动力学模型和制导律函数中添加：
 
 F_actual = F_nominal * thrust_factor; % 推力变化
+
 Isp_actual = Isp_nominal * Isp_factor; % 比冲变化
 
 对于初始速度方向偏差，在初始状态中原本v0=1692, w0=0，如果存在方向偏差，可以将初始速度矢量旋转一个角度（例如在水平面内旋转5度）：
 
 v = 1692 * cos(deviation_angle);
+
 w = 1692 * sin(deviation_angle);
 
 并用相似的方式添加到动力学模型和制导律函数中。其中deviation_angle是初始速度方向偏差角（弧度）。
@@ -218,7 +261,9 @@ w = 1692 * sin(deviation_angle);
 在初始运行时，需要对偏差因子进行初始化，以计算标称工况下的情况：
 
 if ~isfield(params, 'F_factor'), params.F_factor = 1.0; end
+
 if ~isfield(params, 'Isp_factor'), params.Isp_factor = 1.0; end
+
 if ~isfield(params, 'velocity_angle'), params.velocity_angle = 0; end
 
 3.2.4 积分计算模块
@@ -226,12 +271,12 @@ if ~isfield(params, 'velocity_angle'), params.velocity_angle = 0; end
 在仿真运行程序中使用ode45积分器对动力学方程进行积分：
 
 odefun = @(t,y) lunarDynamics(t, y, params);
+
 [time, state] = ode45(odefun, params.tspan, initial_state, options);
 
 其中，在options中设置终止条件：
 
-options = odeset('RelTol', params.reltol, 'AbsTol', params.abstol, ...
-'Events', @(t,y) landingEvents(t,y,params.rf));
+options = odeset('RelTol', params.reltol, 'AbsTol', params.abstol, 'Events', @(t,y) landingEvents(t,y,params.rf));
 
 终止事件由终止事件函数定义：
 
@@ -240,8 +285,11 @@ function [value, isterminal, direction] = landingEvents(~, y, rf)
 % 达到目标高度 (高度<2km)
 
 value = y(1) - rf; % 目标高度2km
+
 isterminal(1) = 1; % 触发时终止
+
 direction(1) = -1; % 下降穿过阈值时触发
+
 end
 
 3.3 仿真参数设置
