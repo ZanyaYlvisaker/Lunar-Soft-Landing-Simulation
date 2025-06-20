@@ -70,6 +70,11 @@ state_velocity = cell(size(velocity_angles));
 
 for i = 1:length(velocity_angles)
     simParams.velocity_angle = velocity_angles(i);
+    % 处理初始速度方向偏差
+    v_corrected = simParams.v0 * cos(simParams.velocity_angle);
+    w_corrected = simParams.v0 * sin(simParams.velocity_angle);
+    simParams.v0 = v_corrected;
+    simParams.w0 = w_corrected;
     [time_velocity{i}, state_velocity{i}] = runLandingSimulation(simParams);
 end
 
