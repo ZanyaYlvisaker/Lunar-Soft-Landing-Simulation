@@ -28,14 +28,6 @@ F = params.F_nominal * params.F_factor;
 Isp = params.Isp_nominal * params.Isp_factor;
 C = Isp * params.gE;
 
-% 处理初始速度方向偏差
-if isfield(params, 'velocity_angle') && t == 0
-    v_corrected = params.v0 * cos(params.velocity_angle);
-    w_corrected = params.v0 * sin(params.velocity_angle);
-    v = v_corrected;
-    w = w_corrected;
-end
-
 % 动力学方程 (式17-2)
 dr = u;
 dbeta = v / r;
